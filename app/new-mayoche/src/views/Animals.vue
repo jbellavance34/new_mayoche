@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import HomeView from '../components/TheWelcome.vue'
+import Animals from '../components/Animals.vue'
 </script>
 
 <template>
   <main>
-    <HomeView />
+    <Animals />
   </main>
 </template>
