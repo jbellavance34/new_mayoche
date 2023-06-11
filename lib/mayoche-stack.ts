@@ -5,6 +5,7 @@ import * as s3_deploy from 'aws-cdk-lib/aws-s3-deployment';
 import * as cloudfront from 'aws-cdk-lib/aws-cloudfront';
 import * as origins from 'aws-cdk-lib/aws-cloudfront-origins';
 import * as route53 from 'aws-cdk-lib/aws-route53';
+import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as acm from 'aws-cdk-lib/aws-certificatemanager';
 import * as path from 'path';
 
@@ -70,5 +71,23 @@ export class MayocheFrontendStack extends cdk.Stack {
       ],
       exclude: ['index.html'],
     })
+
+    /** Fetch Data */
+    const s3_data_bucket = new s3.Bucket(this, 'mayoche-data-bucket', {})
+   // const lambda_function = new lambda.Function(this, 'mayoche-fetch-data', {
+   //   runtime: cdk.aws_lambda.Runtime.PYTHON_3_10,
+   //   code: cdk.aws_lambda.Code.fromAsset(path.join(__dirname, 'lambda/image_scraper')),
+   //   handler: 'index.handler',
+   // })
+    const lambda_fetch_data = new lambda.DockerImageFunction(this, 'mayoche-fetch-data-docker', {
+      code: lambda.DockerImageCode.fromImageAsset(path.join(__dirname, 'lambda/image_scraper')),
+      environment: {
+        'BUCKET_NAME': s3_data_bucket.bucketName,
+      },
+      timeout: cdk.Duration.seconds(300),
+      memorySize: 256,
+      reservedConcurrentExecutions: 1,
+    });
+    s3_data_bucket.grantWrite(lambda_fetch_data);
   }
 }
