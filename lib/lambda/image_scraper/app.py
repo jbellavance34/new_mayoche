@@ -33,8 +33,11 @@ def handler(event, context):
     for animal in animals:
         url = f"https://{animal['name']}oftheday.com/"
         image_url = get_animal_image(url, animal['name'])
-        animal['image'] = image_url
-    upload_file(animals, BUCKET_NAME, 'animals.json')
+        animal['image_url'] = image_url
+        animal['year'] = image_url.split('/')[4]
+        animal['month'] = image_url.split('/')[5]
+        animal['day'] = image_url.split('/')[6].split('.')[0]
+    upload_file(animals, BUCKET_NAME, 'data/animals.json')
     return {
         'statusCode': 200,
         'body': json.dumps('Web scraping completed')
