@@ -7,7 +7,7 @@
   const listItems = ref([]);
 
   async function getData() {
-    const res = await fetch("https://jsonplaceholder.typicode.com/posts");
+    const res = await fetch("https://new.mayoche.info/data/animals.json");
     const finalRes = await res.json();
     listItems.value = finalRes;
   }
@@ -17,7 +17,14 @@
 
 
 <template>
-  <div class="current_score">
+  <div classe="animals" v-for="item in listItems" :key="item.name">
+    <figure>
+      <img v-bind:src="item.image_url" v-bind:alt="item.name" style="width: 400px; height: 400px; margin: 0px auto;"/>
+      <figcaption>{{ item.name }} of the day</figcaption>
+      <figcaption>Last update {{ item.year }} {{ item.month }} {{ item.day }}</figcaption>
+    </figure>
+  </div>
+  <div class="results">
     <table>
       <thead>
         <tr>
