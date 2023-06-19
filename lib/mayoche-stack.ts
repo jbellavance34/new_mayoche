@@ -74,11 +74,18 @@ export class MayocheFrontendStack extends cdk.Stack {
 
     /** Fetch Data */
     const s3_data_bucket = new s3.Bucket(this, 'mayoche-data-bucket', {})
+    // cors
+    s3_data_bucket.addCorsRule({
+      allowedOrigins: ['https://new.mayoche.info', 'http://localhost:5173'],
+      allowedMethods: [s3.HttpMethods.GET],
+      allowedHeaders: ['*']
+    })
    // const lambda_function = new lambda.Function(this, 'mayoche-fetch-data', {
    //   runtime: cdk.aws_lambda.Runtime.PYTHON_3_10,
    //   code: cdk.aws_lambda.Code.fromAsset(path.join(__dirname, 'lambda/image_scraper')),
    //   handler: 'index.handler',
    // })
+   // TODO : Add cloudwatch event with crontab
     const lambda_fetch_data = new lambda.DockerImageFunction(this, 'mayoche-fetch-data-docker', {
       code: lambda.DockerImageCode.fromImageAsset(path.join(__dirname, 'lambda/image_scraper')),
       environment: {
@@ -89,5 +96,16 @@ export class MayocheFrontendStack extends cdk.Stack {
       reservedConcurrentExecutions: 1,
     });
     s3_data_bucket.grantWrite(lambda_fetch_data);
+    // adding behavior to /image with s3_data_bucket
+    cloudfrontDistribution.addBehavior('data/*.json', new origins.S3Origin(s3_data_bucket), {
+      allowedMethods: cloudfront.AllowedMethods.ALLOW_ALL,
+      viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+      cachePolicy: new cloudfront.CachePolicy(this, 'data-cache-policy', {
+          defaultTtl: cdk.Duration.minutes(1),
+          maxTtl: cdk.Duration.minutes(1),
+          minTtl: cdk.Duration.minutes(1)
+      })
+    })
+
   }
 }
