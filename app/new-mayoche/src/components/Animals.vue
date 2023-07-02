@@ -17,12 +17,14 @@
 
 
 <template>
-  <div classe="animals" v-for="item in listItems" :key="item.name">
-    <figure>
-      <img v-bind:src="item.image_url" v-bind:alt="item.name" style="width: 400px; height: 400px; margin: 0px auto;"/>
+  <div style="display: flex;flex-direction: row;">
+    <figure v-for="item in listItems" :key="item.name">
+    <div style="flex: 33.33%;padding: auto;">
+      <img v-bind:src="item.image_url" v-bind:alt="item.name" height="400" width="400" alt="auto"/>
       <figcaption>{{ item.name }} of the day</figcaption>
       <figcaption>Last update {{ item.year }} {{ item.month }} {{ item.day }}</figcaption>
-    </figure>
+    </div>
+  </figure>
   </div>
   <div class="results">
     <table>
@@ -90,18 +92,6 @@ th {
   color: 'black';
 }
 
-/* 
-.greetings h1,
-.greetings h3 {
-  text-align: center;
-} */
-
-/* @media (min-width: 1024px) {
-  .greetings h1,
-  .greetings h3 {
-    text-align: left;
-  }
-} */
 </style>
 
 
