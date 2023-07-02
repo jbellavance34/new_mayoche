@@ -25,7 +25,10 @@ def upload_file(data, bucket, key):
     s3object = s3.Object(bucket, key)
 
     s3object.put(
-        Body=(bytes(json.dumps(data).encode('UTF-8')))
+        Body=(bytes(json.dumps(data).encode('UTF-8'))),
+        Metadata={
+            'Cache-Control': 'max-age=60, public'
+        },
     )
 
 def handler(event, context): 
