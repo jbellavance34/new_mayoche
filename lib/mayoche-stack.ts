@@ -124,11 +124,33 @@ export class MayocheFrontendStack extends cdk.Stack {
           removalPolicy: cdk.RemovalPolicy.RETAIN,
           tableName: modelName,
     });
+    // GSI to sort data
+    dynamoTable.addGlobalSecondaryIndex({
+      indexName: 'sortIndex',
+      partitionKey: {
+        name: 'type',
+        type: dynamodb.AttributeType.STRING,
+      },
+      sortKey: {
+        name: 'createdAt',
+        type: dynamodb.AttributeType.STRING,
+      },
+      projectionType: dynamodb.ProjectionType.ALL,
+    })
     const api = new apigw.RestApi(this, 'mayoche-data-api', { 
       restApiName: 'mayoche-data-api',
       defaultCorsPreflightOptions: {
         allowOrigins: apigw.Cors.ALL_ORIGINS,
       },
+    })
+    const dnsDomain = 'new-api.mayoche.info'
+    new apigw.DomainName(this, 'mayoche-data-api-domain-name', {
+      domainName: dnsDomain,
+      certificate: new acm.Certificate(this, 'certificate-api', { 
+        domainName: dnsDomain,
+        validation: acm.CertificateValidation.fromDns(hostedZone)  
+      }),
+      endpointType: apigw.EndpointType.REGIONAL,
     })
     new apigw.UsagePlan(this, 'mayoche-data-api-usage-plan', {
       name: 'mayoche-data-api-usage-plan',
@@ -143,6 +165,7 @@ export class MayocheFrontendStack extends cdk.Stack {
     })
     const allResources = api.root.addResource(modelName.toLocaleLowerCase());
     const oneResource = allResources.addResource('{id}');
+    
     const getPolicy = new iam.Policy(this, 'getPolicy', {
       statements: [
         new iam.PolicyStatement({
@@ -155,14 +178,27 @@ export class MayocheFrontendStack extends cdk.Stack {
     const getRole = new iam.Role(this, 'getRole', {
       assumedBy: new iam.ServicePrincipal('apigateway.amazonaws.com'),
     });
-    getRole.attachInlinePolicy(getPolicy);
+    getRole.attachInlinePolicy(getPolicy);    
+    const scanPolicy = new iam.Policy(this, 'scanPolicy', {
+      statements: [
+        new iam.PolicyStatement({
+          actions: ['dynamodb:Scan'],
+          effect: iam.Effect.ALLOW,
+          resources: [dynamoTable.tableArn],
+        }),
+      ],
+    });
+    const scanRole = new iam.Role(this, 'scanRole', {
+      assumedBy: new iam.ServicePrincipal('apigateway.amazonaws.com'),
+    });
+    scanRole.attachInlinePolicy(scanPolicy);
     const errorResponses = [
       {
         selectionPattern: '400',
         statusCode: '400',
         responseTemplates: {
           'application/json': `{
-            "error": "Bad input!"
+            "error": "$context.error.message"
           }`,
         },
       },
@@ -171,7 +207,7 @@ export class MayocheFrontendStack extends cdk.Stack {
         statusCode: '500',
         responseTemplates: {
           'application/json': `{
-            "error": "Internal Service Error!"
+            "error": "$context.error.message"
           }`,
         },
       },
@@ -196,6 +232,22 @@ export class MayocheFrontendStack extends cdk.Stack {
                 }
               },
               "TableName": "${modelName}"
+            }`,
+        },
+      },
+      service: 'dynamodb',
+    });
+    const getLast10Integration = new apigw.AwsIntegration({
+      action: 'Scan',
+      options: {
+        credentialsRole: scanRole,
+        integrationResponses,
+        requestTemplates: {
+          'application/json': `{
+            "ScanIndexForward": true,
+            "Index": "sortIndex",
+            "Limit": 10,
+            "TableName": "${modelName}"
             }`,
         },
       },
@@ -261,5 +313,7 @@ export class MayocheFrontendStack extends cdk.Stack {
 
     allResources.addMethod('POST', createIntegration, methodOptions);
     oneResource.addMethod('GET', getIntegration, methodOptions);
+    const getNew10Resource = allResources.addResource('new10');
+    getNew10Resource.addMethod('GET', getLast10Integration, methodOptions);
   }
 }
