@@ -141,6 +141,8 @@ export class MayocheFrontendStack extends cdk.Stack {
       restApiName: 'mayoche-data-api',
       defaultCorsPreflightOptions: {
         allowOrigins: apigw.Cors.ALL_ORIGINS,
+        allowHeaders: apigw.Cors.DEFAULT_HEADERS,
+        allowMethods: apigw.Cors.ALL_METHODS,
       },
     })
     const dnsDomain = 'new-api.mayoche.info'
@@ -152,10 +154,11 @@ export class MayocheFrontendStack extends cdk.Stack {
       }),
       endpointType: apigw.EndpointType.REGIONAL,
     })
+    domain.addBasePathMapping(api)
     new route53.CnameRecord(this, 'mayoche-data-api-route53-record', {
-      recordName: dnsDomain,
+      recordName: 'new-api',
       zone: hostedZone,
-      domainName: domain.domainName,
+      domainName: domain.domainNameAliasDomainName,
   })
     new apigw.UsagePlan(this, 'mayoche-data-api-usage-plan', {
       name: 'mayoche-data-api-usage-plan',
@@ -320,5 +323,6 @@ export class MayocheFrontendStack extends cdk.Stack {
     oneResource.addMethod('GET', getIntegration, methodOptions);
     const getNew10Resource = allResources.addResource('new10');
     getNew10Resource.addMethod('GET', getLast10Integration, methodOptions);
+
   }
 }

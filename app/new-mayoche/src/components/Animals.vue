@@ -4,21 +4,36 @@
 // }>()
   import { ref } from 'vue';
 
-  const listItems = ref([]);
 
-  async function getData() {
-    const res = await fetch("https://new.mayoche.info/data/animals.json");
-    const finalRes = await res.json();
-    listItems.value = finalRes;
+  const listAnimals = ref([]);
+
+  async function getDataAnimals() {
+    const resAnimals = await fetch("https://new.mayoche.info/data/animals.json");
+    const finalResAnimals = await resAnimals.json();
+    listAnimals.value = finalResAnimals;
   }
+  getDataAnimals()
 
-  getData()
+
+  const listChoices = ref([]);
+  // TODO: fix no-cors
+  async function getDataChoices() {
+    const resChoices = await fetch("https://new-api.mayoche.info/choice/new10", {mode: "no-cors"})
+    .then(response => response.json())
+    .then((data) => { return data; } )
+    .catch(error => console.log('Error while fetching:', error));
+    const finalResChoices = await resChoices;
+    console.log(JSON.stringify(finalResChoices))
+    listChoices.value = finalResChoices;
+  }
+  getDataChoices()
+  
 </script>
 
 
 <template>
   <div style="display: flex;flex-direction: row;justify-content: center;">
-    <figure v-for="item in listItems" :key="item.name">
+    <figure v-for="item in listAnimals" :key="item.name">
     <div style=";padding: 25px">
       <img v-bind:src="item.image_url" v-bind:alt="item.name" height="400" width="400"/>
       <figcaption>{{ item.name }} of the day</figcaption>
@@ -36,11 +51,12 @@
         </tr>
       </thead>
       <tbody>
-        <tr>
-          <td>jay</td>
-          <td>chat</td>
-          <td>il est beau</td>
-
+        
+        <tr v-for="item in listChoices" :key="item.name">
+          <td>{{ item.Name }}</td>
+          <td>{{ item.Animal }}</td>
+          <td>{{ item.Description }}</td>
+          <td>{{ item.CreatedAt }}</td>
         </tr>
       </tbody>
     </table>
