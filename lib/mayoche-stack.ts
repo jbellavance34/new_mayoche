@@ -144,7 +144,7 @@ export class MayocheFrontendStack extends cdk.Stack {
       },
     })
     const dnsDomain = 'new-api.mayoche.info'
-    new apigw.DomainName(this, 'mayoche-data-api-domain-name', {
+    const domain = new apigw.DomainName(this, 'mayoche-data-api-domain-name', {
       domainName: dnsDomain,
       certificate: new acm.Certificate(this, 'certificate-api', { 
         domainName: dnsDomain,
@@ -152,6 +152,11 @@ export class MayocheFrontendStack extends cdk.Stack {
       }),
       endpointType: apigw.EndpointType.REGIONAL,
     })
+    new route53.CnameRecord(this, 'mayoche-data-api-route53-record', {
+      recordName: dnsDomain,
+      zone: hostedZone,
+      domainName: domain.domainName,
+  })
     new apigw.UsagePlan(this, 'mayoche-data-api-usage-plan', {
       name: 'mayoche-data-api-usage-plan',
       apiStages: [{
