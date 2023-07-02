@@ -17,16 +17,16 @@
 
 
 <template>
-  <div style="display: flex;flex-direction: row;">
+  <div style="display: flex;flex-direction: row;justify-content: center;">
     <figure v-for="item in listItems" :key="item.name">
-    <div style="flex: 33.33%;padding: auto;">
-      <img v-bind:src="item.image_url" v-bind:alt="item.name" height="400" width="400" alt="auto"/>
+    <div style=";padding: 25px">
+      <img v-bind:src="item.image_url" v-bind:alt="item.name" height="400" width="400"/>
       <figcaption>{{ item.name }} of the day</figcaption>
       <figcaption>Last update {{ item.year }} {{ item.month }} {{ item.day }}</figcaption>
     </div>
   </figure>
   </div>
-  <div class="results">
+  <div style="width: 400px;margin: 0px auto;display: flex;flex: 1 1 0%;flex-direction: column;justify-content: center;padding: 20px;">
     <table>
       <thead>
         <tr>
