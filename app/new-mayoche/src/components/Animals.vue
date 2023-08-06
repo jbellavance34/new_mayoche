@@ -15,16 +15,12 @@
   getDataAnimals()
 
 
-  const listChoices = ref([]);
-  // TODO: fix no-cors
+  const listChoices = ref(null);
   async function getDataChoices() {
-    const resChoices = await fetch("https://new-api.mayoche.info/choice/new10", {mode: "no-cors"})
-    .then(response => response.json())
-    .then((data) => { return data; } )
-    .catch(error => console.log('Error while fetching:', error));
-    const finalResChoices = await resChoices;
-    console.log(JSON.stringify(finalResChoices))
-    listChoices.value = finalResChoices;
+
+    const resChoices = await fetch("https://new-api.mayoche.info/choice/all");
+    const finalResChoices = await resChoices.json();
+    listChoices.value = finalResChoices.Items;
   }
   getDataChoices()
   
@@ -42,21 +38,25 @@
   </figure>
   </div>
   <div style="width: 400px;margin: 0px auto;display: flex;flex: 1 1 0%;flex-direction: column;justify-content: center;padding: 20px;">
+    <h2>Liste des 10 derniers choix</h2>
     <table>
       <thead>
         <tr>
           <th>Nom</th>
           <th>Animal</th>
           <th>Description</th>
+          <th>CreatedAt</th>
+          <th>Url</th>
         </tr>
       </thead>
       <tbody>
         
-        <tr v-for="item in listChoices" :key="item.name">
-          <td>{{ item.Name }}</td>
-          <td>{{ item.Animal }}</td>
-          <td>{{ item.Description }}</td>
-          <td>{{ item.CreatedAt }}</td>
+        <tr v-for="item in listChoices" :key="item.Items">
+          <td>{{ item.Name.S }}</td>
+          <td>{{ item.Animal.S }}</td>
+          <td>{{ item.Description.S }}</td>
+          <td>{{ item.CreatedAt.S.split('/')[0] }} {{ item.CreatedAt.S.split('/')[1] }} {{ item.CreatedAt.S.split('/')[2].split(':')[0] }}</td>
+          <td><a v-bind:href="item.ImageUrl.S">Url image</a></td>
         </tr>
       </tbody>
     </table>
