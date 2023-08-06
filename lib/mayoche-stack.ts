@@ -12,6 +12,7 @@ import * as route53 from 'aws-cdk-lib/aws-route53';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as acm from 'aws-cdk-lib/aws-certificatemanager';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
+import * as logs from 'aws-cdk-lib/aws-logs';
 import * as path from 'path';
 
 export class MayocheFrontendStack extends cdk.Stack {
@@ -124,41 +125,60 @@ export class MayocheFrontendStack extends cdk.Stack {
           removalPolicy: cdk.RemovalPolicy.RETAIN,
           tableName: modelName,
     });
-    // GSI to sort data
-    dynamoTable.addGlobalSecondaryIndex({
-      indexName: 'sortIndex',
-      partitionKey: {
-        name: 'type',
-        type: dynamodb.AttributeType.STRING,
-      },
-      sortKey: {
-        name: 'createdAt',
-        type: dynamodb.AttributeType.STRING,
-      },
-      projectionType: dynamodb.ProjectionType.ALL,
-    })
+
+    // logging
+    const api_log = new logs.LogGroup(this, 'api-log', {
+      retention: logs.RetentionDays.ONE_WEEK
+    }) 
     const api = new apigw.RestApi(this, 'mayoche-data-api', { 
       restApiName: 'mayoche-data-api',
-      defaultCorsPreflightOptions: {
-        allowOrigins: apigw.Cors.ALL_ORIGINS,
-        allowHeaders: apigw.Cors.DEFAULT_HEADERS,
-        allowMethods: apigw.Cors.ALL_METHODS,
-      },
+      //defaultCorsPreflightOptions: {
+      //  allowOrigins: apigw.Cors.ALL_ORIGINS
+      //},
+      deployOptions: {
+        accessLogDestination: new apigw.LogGroupLogDestination(api_log),
+        accessLogFormat: apigw.AccessLogFormat.custom(JSON.stringify({
+          requestId: apigw.AccessLogField.contextRequestId(),
+          userAgent: apigw.AccessLogField.contextIdentityUser(),
+          sourceIp: apigw.AccessLogField.contextIdentitySourceIp(),
+          requestTime: apigw.AccessLogField.contextRequestTime(),
+          httpMethod: apigw.AccessLogField.contextHttpMethod(),
+          path: apigw.AccessLogField.contextPath(),
+          status: apigw.AccessLogField.contextStatus(),
+          responseLength: apigw.AccessLogField.contextResponseLength(),
+        }))
+      }
     })
+
+    api_log.grantWrite(new iam.ServicePrincipal('apigateway.amazonaws.com'));
     const dnsDomain = 'new-api.mayoche.info'
+    const new_api_cert = new acm.Certificate(this, 'certificate-api', { 
+      domainName: dnsDomain,
+      validation: acm.CertificateValidation.fromDns(hostedZone)  
+    })
     const domain = new apigw.DomainName(this, 'mayoche-data-api-domain-name', {
       domainName: dnsDomain,
-      certificate: new acm.Certificate(this, 'certificate-api', { 
-        domainName: dnsDomain,
-        validation: acm.CertificateValidation.fromDns(hostedZone)  
-      }),
+      certificate: new_api_cert,
       endpointType: apigw.EndpointType.REGIONAL,
     })
     domain.addBasePathMapping(api)
+    const api_cloudfront = new cloudfront.Distribution(this, 'new-api-cloudfront', {
+      defaultBehavior: {
+        origin: new origins.HttpOrigin(domain.domainNameAliasDomainName),
+        viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+        allowedMethods: cloudfront.AllowedMethods.ALLOW_ALL,
+        cachePolicy: cloudfront.CachePolicy.CACHING_DISABLED,
+        responseHeadersPolicy: cloudfront.ResponseHeadersPolicy.CORS_ALLOW_ALL_ORIGINS_WITH_PREFLIGHT,
+        originRequestPolicy: cloudfront.OriginRequestPolicy.ALL_VIEWER,
+      },
+      domainNames: ['new-api.mayoche.info'],
+      certificate: new_api_cert,
+
+    })
     new route53.CnameRecord(this, 'mayoche-data-api-route53-record', {
       recordName: 'new-api',
       zone: hostedZone,
-      domainName: domain.domainNameAliasDomainName,
+      domainName: api_cloudfront.domainName,
   })
     new apigw.UsagePlan(this, 'mayoche-data-api-usage-plan', {
       name: 'mayoche-data-api-usage-plan',
@@ -245,16 +265,14 @@ export class MayocheFrontendStack extends cdk.Stack {
       },
       service: 'dynamodb',
     });
-    const getLast10Integration = new apigw.AwsIntegration({
+    const getAllIntergration = new apigw.AwsIntegration({
       action: 'Scan',
       options: {
         credentialsRole: scanRole,
         integrationResponses,
         requestTemplates: {
           'application/json': `{
-            "ScanIndexForward": true,
-            "Index": "sortIndex",
-            "Limit": 10,
+            "ScanIndexForward": false,
             "TableName": "${modelName}"
             }`,
         },
@@ -309,6 +327,9 @@ export class MayocheFrontendStack extends cdk.Stack {
                 },
                 "type": {
                   "S": "vote"
+                },
+                "ImageUrl": {
+                  "S": "$input.path('$.imageUrl')"
                 }
               },
               "TableName": "${modelName}"
@@ -317,12 +338,20 @@ export class MayocheFrontendStack extends cdk.Stack {
       },
       service: 'dynamodb',
     });
-    const methodOptions = { methodResponses: [{ statusCode: '200' }, { statusCode: '400' }, { statusCode: '500' }] };
+    const methodOptions = { 
+      methodResponses: [
+        { 
+          statusCode: '200'
+        }, 
+        { statusCode: '400' }, 
+        { statusCode: '500' }
+      ],
+  };
 
     allResources.addMethod('POST', createIntegration, methodOptions);
     oneResource.addMethod('GET', getIntegration, methodOptions);
-    const getNew10Resource = allResources.addResource('new10');
-    getNew10Resource.addMethod('GET', getLast10Integration, methodOptions);
+    const getAllResource = allResources.addResource('all');
+    getAllResource.addMethod('GET', getAllIntergration, methodOptions);
 
   }
 }
