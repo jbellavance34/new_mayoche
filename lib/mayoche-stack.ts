@@ -273,7 +273,8 @@ export class MayocheFrontendStack extends cdk.Stack {
         requestTemplates: {
           'application/json': `{
             "ScanIndexForward": false,
-            "TableName": "${modelName}"
+            "TableName": "${modelName}",
+            "Limit": 10
             }`,
         },
       },
