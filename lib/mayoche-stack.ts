@@ -146,6 +146,8 @@ export class MayocheFrontendStack extends cdk.Stack {
           path: apigw.AccessLogField.contextPath(),
           status: apigw.AccessLogField.contextStatus(),
           responseLength: apigw.AccessLogField.contextResponseLength(),
+          throttleBurstingLimit: 200,
+          thottleRateLimit: 500
         }))
       }
     })
